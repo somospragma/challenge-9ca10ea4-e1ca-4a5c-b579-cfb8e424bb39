@@ -1,0 +1,28 @@
+apache-airflow==2.10.0
+psycopg2-binary==2.9.9
+pandas==2.2.1
+pytest==8.1.1
+prometheus-client==0.20.0
+python-dotenv==1.0.1
+SQLAlchemy==2.0.29
+
+# Dependencias adicionales para monitoreo y calidad de datos
+apache-airflow-providers-postgres==5.7.0
+airflow-prometheus-exporter==0.2.0
+python-json-logger==2.0.7
+jsonschema==4.21.1
+
+# Para manejo de particiones y formatos columnares
+pyarrow==15.0.2
+fastparquet==2024.2.0
+
+# Para orquestación y manejo de configuraciones
+decouple==1.7
+
+# Dependencias para testing avanzado
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+freezegun==1.4.0
+
+# Versiones coordinadas para evitar conflictos
+numpy==1.26.4

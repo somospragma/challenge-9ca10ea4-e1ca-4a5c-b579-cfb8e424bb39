@@ -1,0 +1,191 @@
+{
+  "environments": {
+    "development": {
+      "database": {
+        "host": "localhost",
+        "port": 5432,
+        "database": "oltp_banking_dev",
+        "user": "oltp_user",
+        "password_env": "DB_PASSWORD",
+        "connection_pool": {
+          "min_size": 5,
+          "max_size": 20,
+          "max_overflow": 10,
+          "pool_timeout": 30,
+          "pool_recycle": 3600,
+          "echo": false
+        },
+        "isolation_level": "REPEATABLE READ",
+        "statement_timeout": 45000,
+        "lock_timeout": 30000,
+        "idle_in_transaction_session_timeout": 60000
+      },
+      "processing": {
+        "batch_size": 5000,
+        "parallel_workers": 4,
+        "chunk_size": 1000,
+        "retry_attempts": 3,
+        "retry_delay_seconds": 5,
+        "enable_checkpointing": true,
+        "checkpoint_interval": 10000
+      },
+      "partitioning": {
+        "strategy": "by_date",
+        "date_format": "%Y_%m",
+        "retention_days": 90,
+        "compression": "snappy"
+      },
+      "quality_thresholds": {
+        "min_amount": 0.01,
+        "max_amount": 1000000.00,
+        "max_null_percentage": 0.05,
+        "duplicate_check_enabled": true,
+        "schema_validation_strict": true
+      },
+      "monitoring": {
+        "prometheus_enabled": true,
+        "prometheus_port": 9090,
+        "metrics_interval_seconds": 30,
+        "slow_query_threshold_ms": 100,
+        "alert_on_quality_failure": true,
+        "log_level": "DEBUG"
+      },
+      "s3": {
+        "bucket": "oltp-banking-dev",
+        "region": "us-east-1",
+        "prefix": "dev/transactions/",
+        "format": "parquet"
+      }
+    },
+    "production": {
+      "database": {
+        "host": "oltp-prod.cluster-abc123.us-east-1.rds.amazonaws.com",
+        "port": 5432,
+        "database": "oltp_banking_prod",
+        "user": "oltp_service_account",
+        "password_env": "DB_PASSWORD_PROD",
+        "connection_pool": {
+          "min_size": 20,
+          "max_size": 100,
+          "max_overflow": 50,
+          "pool_timeout": 30,
+          "pool_recycle": 1800,
+          "echo": false
+        },
+        "isolation_level": "REPEATABLE READ",
+        "statement_timeout": 45000,
+        "lock_timeout": 30000,
+        "idle_in_transaction_session_timeout": 60000
+      },
+      "processing": {
+        "batch_size": 10000,
+        "parallel_workers": 8,
+        "chunk_size": 2000,
+        "retry_attempts": 5,
+        "retry_delay_seconds": 10,
+        "enable_checkpointing": true,
+        "checkpoint_interval": 25000
+      },
+      "partitioning": {
+        "strategy": "by_date",
+        "date_format": "%Y_%m",
+        "retention_days": 365,
+        "compression": "gzip"
+      },
+      "quality_thresholds": {
+        "min_amount": 0.01,
+        "max_amount": 1000000.00,
+        "max_null_percentage": 0.01,
+        "duplicate_check_enabled": true,
+        "schema_validation_strict": true
+      },
+      "monitoring": {
+        "prometheus_enabled": true,
+        "prometheus_port": 9090,
+        "metrics_interval_seconds": 15,
+        "slow_query_threshold_ms": 50,
+        "alert_on_quality_failure": true,
+        "log_level": "INFO"
+      },
+      "s3": {
+        "bucket": "oltp-banking-prod",
+        "region": "us-east-1",
+        "prefix": "prod/transactions/",
+        "format": "parquet"
+      }
+    }
+  },
+  "performance_targets": {
+    "throughput_tps": 5000,
+    "max_latency_ms": 50,
+    "p99_latency_ms": 100,
+    "max_concurrent_connections": 150,
+    "replication_lag_ms": 50,
+    "checkpoint_interval_transactions": 50000
+  },
+  "quality_rules": {
+    "transaction_amount": {
+      "type": "range",
+      "min": 0.01,
+      "max": 1000000.00,
+      "reject_on_violation": true
+    },
+    "transaction_timestamp": {
+      "type": "not_null",
+      "reject_on_violation": true
+    },
+    "account_reference": {
+      "type": "foreign_key",
+      "reference_table": "accounts",
+      "reference_column": "account_id",
+      "reject_on_violation": true
+    },
+    "transaction_type": {
+      "type": "enum",
+      "allowed_values": ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "PAYMENT", "REFUND"],
+      "reject_on_violation": true
+    },
+    "duplicate_detection": {
+      "type": "unique_constraint",
+      "columns": ["transaction_id"],
+      "reject_on_violation": true,
+      "strategy": "upsert"
+    }
+  },
+  "airflow": {
+    "default_args": {
+      "owner": "dataengineering",
+      "depends_on_past": false,
+      "email_on_failure": true,
+      "email_on_retry": false,
+      "retries": 3,
+      "retry_delay": {
+        "minutes": 5
+      }
+    },
+    "schedule_interval": "*/15 * * * *",
+    "max_active_runs": 1,
+    "catchup": false,
+    "execution_timeout": {
+      "hours": 2
+    }
+  },
+  "logging": {
+    "format": "json",
+    "date_format": "%Y-%m-%d %H:%M:%S",
+    "log_fields": ["timestamp", "level", "message", "transaction_id", "duration_ms"],
+    "output": {
+      "console": {
+        "enabled": true,
+        "level": "DEBUG"
+      },
+      "file": {
+        "enabled": true,
+        "path": "/var/log/oltp/pipeline.log",
+        "max_bytes": 104857600,
+        "backup_count": 10,
+        "level": "INFO"
+      }
+    }
+  }
+}
